@@ -12,16 +12,19 @@ from i2rt.motor_drivers.dm_driver import DMChainCanInterface
 
 import importlib.resources
 
-with importlib.resources.path("i2rt", "robot_models/yam/yam.xml") as yam_xml_path:
-    YAM_XML_PATH = str(yam_xml_path)
-with importlib.resources.path(
-    "i2rt", "robot_models/yam/yam_lw_gripper.xml"
-) as yam_lw_gripper_xml_path:
-    YAM_XML_LW_GRIPPER_PATH = str(yam_lw_gripper_xml_path)
-with importlib.resources.path(
-    "i2rt", "robot_models/yam/yam_teaching_handle.xml"
-) as yam_teaching_handle_xml_path:
-    YAM_TEACHING_HANDLE_PATH = str(yam_teaching_handle_xml_path)
+YAM_XML_PATH = (
+    importlib.resources.files("i2rt").joinpath("robot_models/yam/yam.xml").read_text()
+)
+YAM_XML_LW_GRIPPER_PATH = (
+    importlib.resources.files("i2rt")
+    .joinpath("robot_models/yam/yam_lw_gripper.xml")
+    .read_text()
+)
+YAM_XML_TEACHING_HANDLE_PATH = (
+    importlib.resources.files("i2rt")
+    .joinpath("robot_models/yam/yam_teaching_handle.xml")
+    .read_text()
+)
 
 
 class GripperType(enum.Enum):
