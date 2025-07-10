@@ -10,10 +10,18 @@ import numpy as np
 
 from i2rt.motor_drivers.dm_driver import DMChainCanInterface
 
-I2RT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-YAM_XML_PATH = os.path.join(I2RT_ROOT, "robot_models/yam/yam.xml")
-YAM_XML_LW_GRIPPER_PATH = os.path.join(I2RT_ROOT, "robot_models/yam/yam_lw_gripper.xml")
-YAM_TEACHING_HANDLE_PATH = os.path.join(I2RT_ROOT, "robot_models/yam/yam_teaching_handle.xml")
+import importlib.resources
+
+with importlib.resources.path("i2rt.robot_models.yam", "yam.xml") as yam_xml_path:
+    YAM_XML_PATH = str(yam_xml_path)
+with importlib.resources.path(
+    "i2rt.robot_models.yam", "yam_lw_gripper.xml"
+) as yam_lw_gripper_xml_path:
+    YAM_XML_LW_GRIPPER_PATH = str(yam_lw_gripper_xml_path)
+with importlib.resources.path(
+    "i2rt.robot_models.yam", "yam_teaching_handle.xml"
+) as yam_teaching_handle_xml_path:
+    YAM_TEACHING_HANDLE_PATH = str(yam_teaching_handle_xml_path)
 
 
 class GripperType(enum.Enum):
@@ -118,7 +126,9 @@ class GripperType(enum.Enum):
 
 
 class JointMapper:
-    def __init__(self, index_range_map: Dict[int, Tuple[float, float]], total_dofs: int):
+    def __init__(
+        self, index_range_map: Dict[int, Tuple[float, float]], total_dofs: int
+    ):
         """_summary_
         This class is used to map the joint positions from the command space to the robot joint space.
 
@@ -175,7 +185,10 @@ class JointMapper:
 
 
 def linear_gripper_force_torque_map(
-    motor_stroke: float, gripper_stroke: float, gripper_force: float, current_angle: float
+    motor_stroke: float,
+    gripper_stroke: float,
+    gripper_force: float,
+    current_angle: float,
 ) -> float:
     """Maps the motor stroke required to achieve a given gripper force.
 
@@ -210,7 +223,9 @@ def zero_linkage_crank_gripper_force_torque_map(
     """
     current_angle = motor_reading_to_crank_angle(current_angle)
     # Compute crank radius based on the total stroke and angle change
-    crank_radius = gripper_stroke / (2 * (np.cos(gripper_close_angle) - np.cos(gripper_open_angle)))
+    crank_radius = gripper_stroke / (
+        2 * (np.cos(gripper_close_angle) - np.cos(gripper_open_angle))
+    )
     # gripper_position = crank_radius * (np.cos(gripper_close_angle) - np.cos(current_angle))
     grad_gripper_position = crank_radius * np.sin(current_angle)
 
@@ -236,9 +251,12 @@ class GripperForceLimiter:
         self._past_gripper_effort_queue = queue.Queue(maxsize=1000)
         self.average_torque_window = average_torque_window
         self.debug = debug
-        (self.clog_force_threshold, self.clog_speed_threshold, self.sign, _gripper_force_torque_map) = (
-            self.gripper_type.get_gripper_limiter_params()
-        )
+        (
+            self.clog_force_threshold,
+            self.clog_speed_threshold,
+            self.sign,
+            _gripper_force_torque_map,
+        ) = self.gripper_type.get_gripper_limiter_params()
         self.gripper_force_torque_map = partial(
             _gripper_force_torque_map,
             gripper_force=self.max_force,
@@ -270,7 +288,9 @@ class GripperForceLimiter:
 
     def compute_target_gripper_torque(self, gripper_state: Dict[str, float]) -> float:
         current_speed = gripper_state["current_qvel"]
-        history_ts, history_effort = zip(*self._past_gripper_effort_queue.queue, strict=False)
+        history_ts, history_effort = zip(
+            *self._past_gripper_effort_queue.queue, strict=False
+        )
         history_ts = np.array(history_ts)
         history_effort = np.array(history_effort)
         valid_idx = history_ts > time.time() - self.average_torque_window
@@ -283,13 +303,20 @@ class GripperForceLimiter:
             normalized_current_qpos = gripper_state["current_normalized_qpos"]
             normalized_target_qpos = gripper_state["target_normalized_qpos"]
             # 0 close 1 open
-            if (normalized_current_qpos < normalized_target_qpos) or average_effort < 0.2:  # want to open
+            if (
+                normalized_current_qpos < normalized_target_qpos
+            ) or average_effort < 0.2:  # want to open
                 self._is_clogged = False
-        elif average_effort > self.clog_force_threshold and np.abs(current_speed) < self.clog_speed_threshold:
+        elif (
+            average_effort > self.clog_force_threshold
+            and np.abs(current_speed) < self.clog_speed_threshold
+        ):
             self._is_clogged = True
 
         if self._is_clogged:
-            target_eff = self.gripper_force_torque_map(current_angle=gripper_state["current_qpos"])
+            target_eff = self.gripper_force_torque_map(
+                current_angle=gripper_state["current_qpos"]
+            )
             self._is_clogged = True
             return target_eff + 0.3  # this is to compensate the friction
         else:
@@ -303,12 +330,18 @@ class GripperForceLimiter:
         target_eff = self.compute_target_gripper_torque(gripper_state)
 
         if target_eff is not None:
-            command_sign = np.sign(gripper_state["target_qpos"] - gripper_state["current_qpos"]) * self.sign
+            command_sign = (
+                np.sign(gripper_state["target_qpos"] - gripper_state["current_qpos"])
+                * self.sign
+            )
 
             current_zero_eff_pos = (
-                gripper_state["last_command_qpos"] - command_sign * np.abs(gripper_state["current_eff"]) / self._kp
+                gripper_state["last_command_qpos"]
+                - command_sign * np.abs(gripper_state["current_eff"]) / self._kp
             )
-            target_gripper_raw_pos = current_zero_eff_pos + command_sign * np.abs(target_eff) / self._kp
+            target_gripper_raw_pos = (
+                current_zero_eff_pos + command_sign * np.abs(target_eff) / self._kp
+            )
             if self.debug:
                 print("clogged")
                 print(f"gripper_state: {gripper_state}")
@@ -317,7 +350,9 @@ class GripperForceLimiter:
                 print(f"target_gripper_raw_pos: {target_gripper_raw_pos}")
             # Update gripper target position
             a = 0.1
-            self._gripper_adjusted_qpos = (1 - a) * self._gripper_adjusted_qpos + a * target_gripper_raw_pos
+            self._gripper_adjusted_qpos = (
+                1 - a
+            ) * self._gripper_adjusted_qpos + a * target_gripper_raw_pos
             return self._gripper_adjusted_qpos
         else:
             if self.debug:
@@ -410,5 +445,7 @@ def detect_gripper_limits(
         # Negative direction: [min, max]
         detected_limits = [min_pos, max_pos]
 
-    logger.info(f"Motor direction: {motor_direction}, detected limits: {detected_limits}")
+    logger.info(
+        f"Motor direction: {motor_direction}, detected limits: {detected_limits}"
+    )
     return detected_limits
