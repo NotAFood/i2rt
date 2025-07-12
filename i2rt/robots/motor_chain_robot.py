@@ -6,6 +6,8 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union
 
+
+
 import numpy as np
 
 from i2rt.motor_drivers.dm_driver import (
@@ -464,6 +466,22 @@ class MotorChainRobot(Robot):
         assert kp.shape == self._kp.shape == kd.shape
         self._kp = kp
         self._kd = kd
+
+def startRobotInZeroG(robot1,robot2):
+    import time
+    from scripts.yam_test_functions import moveToPos,getJointPos
+    from i2rt.robots.get_robot import get_yam_robot
+    from i2rt.utils.utils import override_log_level
+
+    override_log_level(level=logging.INFO)
+
+
+    print(f"Initializing yam with gripper type:")
+
+    while True:
+        # print(robot.get_observations())
+        moveToPos(robot1,getJointPos(robot2))
+       # print(robot1,getJointPos(robot2))
 
 
 if __name__ == "__main__":
