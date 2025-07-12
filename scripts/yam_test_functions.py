@@ -144,12 +144,10 @@ def setUpRobots():
 def main():
     follower_and_leader()
    
-def follower_and_leader():
+def follower_and_leader(robot1,robot2):
     """ starts the robots, one in follower mode, one in leader mode."""
-    robot1=get_yam_robot("can0")
-    robot2 = get_yam_robot("can1")
-    moveToPos(robot2)
-    setUpInZeroG(robot2,robot1)
+    moveToPos(robot1)
+    setUpInZeroG(robot1,robot2)
 
 if __name__ == "__main__":
     main()
