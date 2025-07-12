@@ -12,8 +12,6 @@ def setUpInZeroG(robot1,robot2):
     startRobotInZeroG(robot1,robot2)
     #can also run by port using below line
     #os.system("python i2rt/robots/motor_chain_robot.py --channel " + canPort  + " --gripper_type yam_compact_small")
-
-
 def getURDF():
     yam_urdf_path = "/home/yam/i2rt/robot_models/yam/yam.urdf"
     
@@ -144,6 +142,9 @@ def setUpRobots():
     righRobot = get_yam_robot(channel="can0")
     return leftRobot, righRobot
 def main():
+    follower_and_leader()
+   
+def follower_and_leader():
     """ starts the robots, one in follower mode, one in leader mode."""
     robot1=get_yam_robot("can0")
     robot2 = get_yam_robot("can1")
